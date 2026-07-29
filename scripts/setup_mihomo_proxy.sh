@@ -113,14 +113,11 @@ if [[ -n "${PROXY_VALIDATION_URL}" ]]; then
 				break
 			fi
 		fi
-		echo "[INFO] Proxy node ${NODE_INDEX}/${#NODES[@]} did not pass target validation"
+		echo "[INFO] Proxy node ${NODE_INDEX}/${#NODES[@]} did not pass unauthenticated preflight"
 	done
 
 	if [[ "${VALID_NODE}" != "true" ]]; then
-		echo "[FAILED] No tested proxy node can reach the target without a WAF page"
-		if [[ "${PROXY_REQUIRED}" == "true" ]]; then
-			exit 1
-		fi
+		echo "[WARN] No node passed unauthenticated JSON preflight; the authenticated browser check will decide"
 	fi
 fi
 
