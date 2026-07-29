@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
 
 if hasattr(sys.stdout, 'reconfigure'):
 	sys.stdout.reconfigure(line_buffering=True)
@@ -112,6 +113,7 @@ async def get_waf_cookies_with_browser(
 		await wait_for_waf_ready(page)
 
 		cookies = await page.context.cookies()
+		debug_print(f'[INFO] {account_name}: Browser cookie names: {[cookie.get("name") for cookie in cookies]}')
 
 		waf_cookies = {}
 		for cookie in cookies:
@@ -234,6 +236,17 @@ async def login_with_credentials(
 		return None
 
 
+def save_debug_non_json_response(response) -> None:
+	if not is_debug_enabled():
+		return
+
+	debug_dir = Path('checkin_screenshots')
+	debug_dir.mkdir(parents=True, exist_ok=True)
+	path = debug_dir / f'non-json-user-info-{datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
+	path.write_text(response.text, encoding='utf-8')
+	print(f'[INFO] Non-JSON response saved for debugging: {path}')
+
+
 def get_user_info(client, headers, user_info_url: str):
 	"""获取用户信息"""
 	try:
@@ -243,6 +256,7 @@ def get_user_info(client, headers, user_info_url: str):
 			try:
 				data = response.json()
 			except ValueError:
+				save_debug_non_json_response(response)
 				content_type = response.headers.get('content-type', 'unknown')
 				preview = ' '.join(response.text[:200].split())
 				return {
