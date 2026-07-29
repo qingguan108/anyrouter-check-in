@@ -467,6 +467,19 @@ def run_check_in_requests(
 				'Sec-Fetch-Mode': 'cors',
 				'Sec-Fetch-Site': 'same-origin',
 			}
+			if provider_config.name == 'agentrouter':
+				headers.update(
+					{
+						'User-Agent': 'claude-cli/2.1.119 (external, cli)',
+						'x-app': 'cli',
+						'X-Stainless-Lang': 'js',
+						'X-Stainless-Runtime': 'node',
+						'X-Stainless-Runtime-Version': 'v20.10.0',
+						'X-Stainless-OS': 'Linux',
+						'X-Stainless-Arch': 'x64',
+						'X-Stainless-Package-Version': '0.39.0',
+					}
+				)
 
 			api_user = api_user_override or account.api_user
 			if api_user:
