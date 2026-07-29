@@ -240,7 +240,18 @@ def get_user_info(client, headers, user_info_url: str):
 		response = client.get(user_info_url, headers=headers, timeout=30)
 
 		if response.status_code == 200:
-			data = response.json()
+			try:
+				data = response.json()
+			except ValueError:
+				content_type = response.headers.get('content-type', 'unknown')
+				preview = ' '.join(response.text[:200].split())
+				return {
+					'success': False,
+					'error': (
+						'Failed to get user info: HTTP 200 returned non-JSON '
+						f'(content-type={content_type}, length={len(response.content)}, preview={preview!r})'
+					),
+				}
 			if data.get('success'):
 				user_data = data.get('data', {})
 				quota = round(user_data.get('quota', 0) / 500000, 2)
