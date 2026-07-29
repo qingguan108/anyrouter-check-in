@@ -115,16 +115,15 @@ async def get_waf_cookies_with_browser(
 		cookies = await page.context.cookies()
 		debug_print(f'[INFO] {account_name}: Browser cookie names: {[cookie.get("name") for cookie in cookies]}')
 
-		waf_cookies = {}
-		for cookie in cookies:
-			cookie_name = cookie.get('name')
-			cookie_value = cookie.get('value')
-			if cookie_name in required_cookies and cookie_value is not None:
-				waf_cookies[cookie_name] = cookie_value
+		browser_cookies = {
+			cookie.get('name'): cookie.get('value')
+			for cookie in cookies
+			if cookie.get('name') and cookie.get('value') is not None
+		}
 
-		print(f'[INFO] {account_name}: Got {len(waf_cookies)} WAF cookies')
+		print(f'[INFO] {account_name}: Got {len(browser_cookies)} browser cookies')
 
-		missing_cookies = [c for c in required_cookies if c not in waf_cookies]
+		missing_cookies = [c for c in required_cookies if c not in browser_cookies]
 
 		if missing_cookies:
 			print(f'[FAILED] {account_name}: Missing WAF cookies: {missing_cookies}')
@@ -133,7 +132,7 @@ async def get_waf_cookies_with_browser(
 
 		print(f'[SUCCESS] {account_name}: Successfully got all WAF cookies')
 		await browser.close()
-		return waf_cookies
+		return browser_cookies
 
 	except Exception as e:
 		print(f'[FAILED] {account_name}: Error occurred while getting WAF cookies: {e}')
@@ -299,7 +298,7 @@ async def prepare_cookies(account_name: str, provider_config, user_cookies: dict
 	else:
 		print(f'[INFO] {account_name}: Bypass WAF not required, using user cookies directly')
 
-	return {**waf_cookies, **user_cookies}
+	return {**user_cookies, **waf_cookies}
 
 
 def execute_check_in(client, account_name: str, provider_config, headers: dict):
