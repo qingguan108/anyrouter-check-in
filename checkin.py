@@ -9,7 +9,6 @@ import json
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 
 if hasattr(sys.stdout, 'reconfigure'):
 	sys.stdout.reconfigure(line_buffering=True)
@@ -113,8 +112,6 @@ async def get_waf_cookies_with_browser(
 		await wait_for_waf_ready(page)
 
 		cookies = await page.context.cookies()
-		debug_print(f'[INFO] {account_name}: Browser cookie names: {[cookie.get("name") for cookie in cookies]}')
-
 		browser_cookies = {
 			cookie.get('name'): cookie.get('value')
 			for cookie in cookies
@@ -235,17 +232,6 @@ async def login_with_credentials(
 		return None
 
 
-def save_debug_non_json_response(response) -> None:
-	if not is_debug_enabled():
-		return
-
-	debug_dir = Path('checkin_screenshots')
-	debug_dir.mkdir(parents=True, exist_ok=True)
-	path = debug_dir / f'non-json-user-info-{datetime.now().strftime("%Y%m%d_%H%M%S")}.html'
-	path.write_text(response.text, encoding='utf-8')
-	print(f'[INFO] Non-JSON response saved for debugging: {path}')
-
-
 def get_user_info(client, headers, user_info_url: str):
 	"""获取用户信息"""
 	try:
@@ -255,15 +241,14 @@ def get_user_info(client, headers, user_info_url: str):
 			try:
 				data = response.json()
 			except ValueError:
-				save_debug_non_json_response(response)
 				content_type = response.headers.get('content-type', 'unknown')
-				preview = ' '.join(response.text[:200].split())
+				if 'aliyun_waf_aa' in response.text:
+					detail = 'Aliyun WAF challenge page'
+				else:
+					detail = f'non-JSON response (content-type={content_type}, length={len(response.content)})'
 				return {
 					'success': False,
-					'error': (
-						'Failed to get user info: HTTP 200 returned non-JSON '
-						f'(content-type={content_type}, length={len(response.content)}, preview={preview!r})'
-					),
+					'error': f'Failed to get user info: HTTP 200 returned {detail}',
 				}
 			if data.get('success'):
 				user_data = data.get('data', {})
@@ -467,20 +452,6 @@ def run_check_in_requests(
 				'Sec-Fetch-Mode': 'cors',
 				'Sec-Fetch-Site': 'same-origin',
 			}
-			if provider_config.name == 'agentrouter':
-				headers.update(
-					{
-						'User-Agent': 'claude-cli/2.1.119 (external, cli)',
-						'x-app': 'cli',
-						'X-Stainless-Lang': 'js',
-						'X-Stainless-Runtime': 'node',
-						'X-Stainless-Runtime-Version': 'v20.10.0',
-						'X-Stainless-OS': 'Linux',
-						'X-Stainless-Arch': 'x64',
-						'X-Stainless-Package-Version': '0.39.0',
-					}
-				)
-
 			api_user = api_user_override or account.api_user
 			if api_user:
 				headers[provider_config.api_user_key] = api_user

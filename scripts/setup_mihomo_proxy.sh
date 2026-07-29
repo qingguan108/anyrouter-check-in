@@ -105,14 +105,6 @@ if [[ -n "${PROXY_VALIDATION_URL}" ]]; then
 
 		RESPONSE_BODY="${PROXY_DIR}/validation-response-${NODE_INDEX}.txt"
 		if RESPONSE_META=$(curl -sS -x "${PROXY_URL}" --max-time 20 \
-			-H 'User-Agent: claude-cli/2.1.119 (external, cli)' \
-			-H 'x-app: cli' \
-			-H 'X-Stainless-Lang: js' \
-			-H 'X-Stainless-Runtime: node' \
-			-H 'X-Stainless-Runtime-Version: v20.10.0' \
-			-H 'X-Stainless-OS: Linux' \
-			-H 'X-Stainless-Arch: x64' \
-			-H 'X-Stainless-Package-Version: 0.39.0' \
 			-o "${RESPONSE_BODY}" -w '%{http_code}|%{content_type}' "${PROXY_VALIDATION_URL}"); then
 			CONTENT_TYPE="${RESPONSE_META#*|}"
 			if [[ "${CONTENT_TYPE}" == application/json* ]] && jq -e . "${RESPONSE_BODY}" >/dev/null 2>&1; then

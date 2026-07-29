@@ -33,6 +33,21 @@ def test_get_user_info_describes_non_json_response():
 	result = get_user_info(client, {}, 'https://example.com/api/user/self')
 
 	assert result['success'] is False
-	assert 'HTTP 200 returned non-JSON' in result['error']
+	assert 'HTTP 200 returned non-JSON response' in result['error']
 	assert 'content-type=text/html; charset=utf-8' in result['error']
-	assert "preview='<html> <title>Access denied</title> </html>'" in result['error']
+
+
+def test_get_user_info_identifies_aliyun_waf_challenge():
+	response = Mock()
+	response.status_code = 200
+	response.json.side_effect = ValueError('not json')
+	response.headers = {'content-type': 'text/html; charset=utf-8'}
+	response.text = '<meta name="aliyun_waf_aa" content="challenge">'
+	response.content = response.text.encode()
+	client = Mock()
+	client.get.return_value = response
+
+	result = get_user_info(client, {}, 'https://example.com/api/user/self')
+
+	assert result['success'] is False
+	assert result['error'] == 'Failed to get user info: HTTP 200 returned Aliyun WAF challenge page'
