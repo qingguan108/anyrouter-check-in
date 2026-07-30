@@ -324,6 +324,11 @@ def execute_check_in(client, account_name: str, provider_config, headers: dict):
 		return False
 
 
+def agentrouter_cookie_check_in_requires_balance_increase(account: AccountConfig, provider_name: str) -> bool:
+	"""AgentRouter 的 session cookie 只能读余额；每日奖励由重新登录流程触发。"""
+	return provider_name == 'agentrouter' and not account.has_login_credentials()
+
+
 def format_check_in_notification(detail: dict) -> str:
 	"""格式化签到通知消息"""
 	lines = [
@@ -470,6 +475,21 @@ def run_check_in_requests(
 
 			user_info_after = get_user_info(client, headers, user_info_url)
 			if user_info_after and user_info_after.get('success'):
+				if agentrouter_cookie_check_in_requires_balance_increase(account, provider_config.name):
+					before_quota = user_info_before.get('quota') if user_info_before else None
+					after_quota = user_info_after.get('quota')
+					if before_quota is not None and after_quota is not None and after_quota > before_quota:
+						print(f'[INFO] {account_name}: Auto check-in increased balance')
+						return True, user_info_before, user_info_after
+
+					error = (
+						'AgentRouter session cookies read balance but did not trigger login check-in; '
+						'use email/password login or refresh OAuth login to claim the daily reward'
+					)
+					user_info_after['error'] = error
+					print(f'[FAILED] {account_name}: {error}')
+					return False, user_info_before, user_info_after
+
 				print(f'[INFO] {account_name}: Check-in completed automatically (triggered by user info request)')
 				return True, user_info_before, user_info_after
 			error = user_info_after.get('error', 'Unknown error') if user_info_after else 'Unknown error'
@@ -570,7 +590,9 @@ async def main():
 				account_name = account.get_display_name(i)
 				status = '[SUCCESS]' if success else '[FAIL]'
 				account_result = f'{status} {account_name}'
-				if user_info_after and user_info_after.get('success'):
+				if user_info_after and user_info_after.get('error'):
+					account_result += f'\n{user_info_after["error"]}'
+				elif user_info_after and user_info_after.get('success'):
 					account_result += f'\n{user_info_after["display"]}'
 				elif user_info_after:
 					account_result += f'\n{user_info_after.get("error", "Unknown error")}'

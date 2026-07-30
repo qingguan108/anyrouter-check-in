@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
-from checkin import get_user_info
+from checkin import agentrouter_cookie_check_in_requires_balance_increase, get_user_info
+from utils.config import AccountConfig
 
 
 def test_get_user_info_returns_balance_for_valid_json():
@@ -51,3 +52,21 @@ def test_get_user_info_identifies_aliyun_waf_challenge():
 
 	assert result['success'] is False
 	assert result['error'] == 'Failed to get user info: HTTP 200 returned Aliyun WAF challenge page'
+
+
+def test_agentrouter_cookie_auth_requires_balance_increase():
+	account = AccountConfig(cookies={'session': 'cookie'}, api_user='12345', provider='agentrouter')
+
+	assert agentrouter_cookie_check_in_requires_balance_increase(account, 'agentrouter') is True
+
+
+def test_agentrouter_email_login_does_not_require_second_balance_increase():
+	account = AccountConfig(
+		cookies=None,
+		api_user=None,
+		provider='agentrouter',
+		email='user@example.com',
+		password='password',
+	)
+
+	assert agentrouter_cookie_check_in_requires_balance_increase(account, 'agentrouter') is False
