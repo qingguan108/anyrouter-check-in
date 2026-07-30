@@ -329,6 +329,21 @@ def agentrouter_cookie_check_in_requires_balance_increase(account: AccountConfig
 	return provider_name == 'agentrouter' and not account.has_login_credentials()
 
 
+def get_disabled_providers() -> set[str]:
+	"""从环境变量读取本次运行要跳过的 provider。"""
+	return {provider.strip().lower() for provider in os.getenv('DISABLED_PROVIDERS', '').split(',') if provider.strip()}
+
+
+def filter_disabled_accounts(accounts: list[AccountConfig], disabled_providers: set[str]) -> list[AccountConfig]:
+	if not disabled_providers:
+		return accounts
+
+	active_accounts = [account for account in accounts if account.provider.lower() not in disabled_providers]
+	skipped_count = len(accounts) - len(active_accounts)
+	print(f'[INFO] Disabled provider(s): {", ".join(sorted(disabled_providers))}; skipped {skipped_count} account(s)')
+	return active_accounts
+
+
 def format_check_in_notification(detail: dict) -> str:
 	"""格式化签到通知消息"""
 	lines = [
@@ -528,6 +543,11 @@ async def main():
 		print(error_msg)
 		notify.push_message('AnyRouter Check-in Alert', error_msg, msg_type='text')
 		sys.exit(1)
+
+	accounts = filter_disabled_accounts(accounts, get_disabled_providers())
+	if not accounts:
+		print('[INFO] No active account configurations after disabled provider filtering, program exits')
+		return
 
 	print(f'[INFO] Found {len(accounts)} account configurations')
 

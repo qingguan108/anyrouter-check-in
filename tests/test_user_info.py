@@ -1,6 +1,6 @@
 from unittest.mock import Mock
 
-from checkin import agentrouter_cookie_check_in_requires_balance_increase, get_user_info
+from checkin import agentrouter_cookie_check_in_requires_balance_increase, filter_disabled_accounts, get_user_info
 from utils.config import AccountConfig
 
 
@@ -70,3 +70,15 @@ def test_agentrouter_email_login_does_not_require_second_balance_increase():
 	)
 
 	assert agentrouter_cookie_check_in_requires_balance_increase(account, 'agentrouter') is False
+
+
+def test_filter_disabled_accounts_removes_matching_provider():
+	accounts = [
+		AccountConfig(cookies={'session': 'a'}, api_user='1', provider='anyrouter'),
+		AccountConfig(cookies={'session': 'b'}, api_user='2', provider='agentrouter'),
+	]
+
+	active_accounts = filter_disabled_accounts(accounts, {'anyrouter'})
+
+	assert len(active_accounts) == 1
+	assert active_accounts[0].provider == 'agentrouter'
